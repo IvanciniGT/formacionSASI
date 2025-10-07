@@ -1,0 +1,17 @@
+ 1Andalucía                            138092
+ 2Aragón                                36764
+ 3Baleares                               21098
+ 4Canarias                               24075
+ 5Cantabria                              16435
+ 6Castilla y León                       86294
+ 7Castilla La Mancha                    121498
+ 8Cataluña                             287643
+ 9Comunidad Foral de Navarra             46343
+10Comunidad Valenciana                   76209
+11Comunidad de Madrid                   250495
+12Extremadura                            23845
+13Galicia                                65038
+14La Rioja                               37654
+15País Vasco                            89754
+16Principado de Asturias                 35486
+17Región de Murcia                      15039
