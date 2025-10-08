@@ -104,4 +104,169 @@ DATA SexosNoIdentificados;
      * GROUP BY;
 RUN;
 
+LIBNAME Datos '/home/ivanosunaayuste0/sasuser.v94/Datos';
+
+
+PROC SORT data = Work.Clientes;
+     BY Comunidad;
+RUN;
+PROC SORT data = Datos.Comunidades;
+     BY Id;
+RUN;
+
+DATA Datos.Clientes;
+	* PARA HACER JOINS EN SAS USAMOS MERGE;
+	* PARA HACER EL MERGE, las tablas deben ir PREORDENADAS POR EL CAMPO DE BY;
+	MERGE  
+		Work.Clientes
+		Datos.Comunidades (RENAME=(Id=Comunidad) DROP=Ventas);
+	* El MERGE SIEMPRE LLEVA ASOCIADA LA PALABRA BY... aquí se pone el campo de unión;
+	* SAS REQUIERE QUE ESE CAMPO SE LLAME IGUAL EN AMBAS TABLAS;
+	BY 
+		Comunidad;
+	FORMAT Comunidad FormatoComunidades.;
+RUN;
+
+/* ANECDOTA... Como montar todos los tipos de joins en SAS */
+DATA WORK.Completo WORK.Izquerda WORK.Derecha WORK.NoIzquierda WORK.NoDerecha WORK.Ambos;
+	MERGE  
+		Work.Clientes     (IN=enClientes                                     )
+		Datos.Comunidades (IN=enComunidades RENAME=(Id=Comunidad) DROP=Ventas);
+	BY 
+		Comunidad;
+	
+											 OUTPUT WORK.Completo; 		* FullOuterJoin;
+	IF enClientes     					THEN OUTPUT WORK.Izquerda; 		* Left outer join;
+	IF enComunidades  					THEN OUTPUT WORK.Derecha;  		* Right outer join;
+	IF not enClientes 					THEN OUTPUT WORK.NoIzquierda; 	* Not left outer join;
+	IF not enComunidades  				THEN OUTPUT WORK.NoDerecha; 	* Not right outer join;
+	IF enClientes and enComunidades  	THEN OUTPUT WORK.Ambos; 		* Inner join;
+	
+	FORMAT Comunidad FormatoComunidades.;
+RUN;
+
+* Para elegir bien el tipo de JOIN que quiero hacer en SAS... ;
+* SAS ME REGALA UNA VARIABLE... IN;
+* Esa variable la puedo confiurar en los MERGE;
+* La variable que defino en in, puede valer 0 o 1... y se puede usar directamente en IFs como condición;
+
+/*
+DATA Datos.Clientes;
+	MERGE  
+		Work.Clientes
+		Datos.Comunidades (RENAME=(Id=Comunidad) DROP=Ventas);
+	BY 
+		Comunidad;
+RUN;
+
+SELECT c.ID, c.Cliente, c.Comunidad, com.Peso, c.Nacimiento, c.Edad
+FROM 
+	Work.Clientes AS c INNER JOIN
+	Datos.Comunidad AS com ON c.comunidad = Com.id 
+	
+
+SELECT c.ID, c.Cliente, c.Comunidad, com.Peso, c.Nacimiento, c.Edad
+FROM 
+	Work.Clientes AS c,
+	Datos.Comunidad 
+WHERE 
+	c.comunidad = Com.id 
+*/	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*
+
+EJERCICIO PROPUESTO:
+
+Tenemos en la tabla clientes: COMUNIDAD / EDAD
+Queremos procesar 1 vez esta tabla... y de 1 vez sacar las siguientes:
+- Acumulado de edad por comunidad autónoma   TODAS LAS COLUMNAS ACTUALS + EDAD ACUMULADO
+- Total de edad por comunidad autónoma       SOLO COLUMNA COMUNIDAD y TOTAL
+
+*/
+
+
+PROC SORT data = Clientes;
+    BY Comunidad; * Para poder hacer luego un BY;
+RUN;
+
+DATA EdadesAcumuladasPorComunidad EdadesPorComunidad (KEEP=Comunidad EdadAcumulada RENAME=(EdadAcumulada=SumaEdades));
+    SET Clientes;
+    BY Comunidad; * FIRST.Comunidad.   LAST.Comunidad;
+	RETAIN EdadAcumulada 0; * Esto nos va manteniendo el valor de esta variable a lo largo de la tabla... ;
+							* Va copiando el valor de fila en fila;
+	* OPCION 1;
+	* IF FIRST.Comunidad THEN EdadAcumulada = 0;
+	* EdadAcumulada = EdadAcumulada + Edad; * Este es el proceso de acumular;
+
+	* OPCION 2;
+	IF FIRST.Comunidad THEN EdadAcumulada = Edad;
+	ELSE EdadAcumulada = EdadAcumulada + Edad; 
+	
+	OUTPUT EdadesAcumuladasPorComunidad;
+	IF LAST.COMUNIDAD THEN OUTPUT EdadesPorComunidad;
+
+RUN;
+
+DATA PruebaSAS;
+    SET Clientes;
+    BY Comunidad;
+	RETAIN EdadAcumulada 0; 
+	IF FIRST.Comunidad THEN EdadAcumulada = Edad;
+	ELSE EdadAcumulada = EdadAcumulada + Edad; 
+	IF LAST.COMUNIDAD;
+	KEEP Comunidad EdadAcumulada;
+	RENAME EdadAcumulada=SumaEdades;
+RUN;
+
+PROC SQL;
+	CREATE TABLE WORK.PruebaSQL AS 
+		SELECT Comunidad, SUM(Edad) AS SumaEdades
+	 	FROM Clientes
+	 	GROUP BY Comunidad;
+QUIT;
+/*
+// SELECT Comunidad, SUM(Edad) AS SumaEdades
+// FROM Clientes
+// GROUP BY Comunidad;
+
+// SAS Soporta muy pocas funciones de ventana en SQL
+// SELECT Comunidad, Cliente, Edad, SUM(Edad) OVER (partition by Comunidad) as EdadAcumulada
+// FROM Clientes
+// ORDER BY Comunidad;
+
+
+// Las BBDD Usan sort internamente para muchas operaciones:
+// - ORDER BY
+// - JOINS (MERGE LOOP)
+// - DISTINCT (sort por todas las columnas)
+//     Primero ordena por TODAS LAS COLUMNAS, para así simplemente luego recorrer la tabla y mirar si una fila es igual a la anterior Y ELIINARLA
+// - UNION -> DISTINCT (Por contra el UNION ALL es guay! no hay distinct)
+*/
+
+
 
